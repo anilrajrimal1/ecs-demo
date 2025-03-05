@@ -1,10 +1,10 @@
 name: Run ECS Task with Command Override
 
 on:
-    push:
-      branches:
-        - master
-    workflow_dispatch:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
 
 jobs:
   run-ecs-task:
@@ -26,27 +26,33 @@ jobs:
       - name: Run ECS Task with Command Override
         id: run-task
         run: |
-            TASK_ARN=$(aws ecs run-task \
-              --cluster anil-cluster \
-              --launch-type FARGATE \
-              --task-definition anil-demo-task \
-              --overrides '{
-                "containerOverrides": [
-                  {
-                    "name": "nginx-container",
-                    "command": ["sh", "-c", "echo \"Overridden command running\"; sleep 3600"]
-                  }
-                ]
-              }' \
-              --query "tasks[0].taskArn" \
-              --output text)
-        
-            echo "TASK_ARN=$TASK_ARN" >> $GITHUB_ENV
-        
+          TASK_ARN=$(aws ecs run-task \
+            --cluster anil-cluster \
+            --launch-type FARGATE \
+            --task-definition anil-demo-task \
+            --network-configuration '{
+              "awsvpcConfiguration": {
+                "subnets": ["subnet-0a7ebaa46e673143d"],
+                "securityGroups": ["sg-0879b943baade1d05"],
+                "assignPublicIp": "ENABLED"
+              }
+            }' \
+            --overrides '{
+              "containerOverrides": [
+                {
+                  "name": "nginx-container",
+                  "command": ["sh", "-c", "echo \"Overridden command running\"; sleep 3600"]
+                }
+              ]
+            }' \
+            --query "tasks[0].taskArn" \
+            --output text)
+
+          echo "TASK_ARN=$TASK_ARN" >> $GITHUB_ENV
 
       - name: Wait for Task Completion
         run: |
-          aws ecs wait tasks-stopped --cluster anil-demo-cluster --tasks "$TASK_ARN"
+          aws ecs wait tasks-stopped --cluster anil-cluster --tasks "$TASK_ARN"
 
       - name: Fetch ECS Task Logs
         run: |
