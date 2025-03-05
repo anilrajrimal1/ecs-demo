@@ -27,7 +27,7 @@ jobs:
         id: run-task
         run: |
             TASK_ARN=$(aws ecs run-task \
-              --cluster anil-demo-cluster \
+              --cluster anil-cluster \
               --launch-type FARGATE \
               --task-definition anil-demo-task \
               --overrides '{
