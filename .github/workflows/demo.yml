@@ -1,0 +1,58 @@
+name: Run ECS Task with Command Override
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run-ecs-task:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1 
+
+      - name: Run ECS Task with Command Override
+        id: run-task
+        run: |
+          TASK_ARN=$(aws ecs run-task \
+            --cluster anil-demo-cluster \
+            --launch-type FARGATE \
+            --task-definition anil-demo-task \
+            --network-configuration awsvpc \
+            --overrides '{
+              "containerOverrides": [
+                {
+                  "name": "nginx-container",
+                  "command": ["sh", "-c", "echo \'Overridden command running\'; sleep 3600"]
+                }
+              ]
+            }' \
+            --query "tasks[0].taskArn" \
+            --output text)
+
+          echo "TASK_ARN=$TASK_ARN" >> $GITHUB_ENV
+
+      - name: Wait for Task Completion
+        run: |
+          aws ecs wait tasks-stopped --cluster anil-demo-cluster --tasks "$TASK_ARN"
+
+      - name: Fetch ECS Task Logs
+        run: |
+          # Get the Log Stream Name (based on task ID)
+          TASK_ID=$(echo $TASK_ARN | awk -F'/' '{print $NF}')
+          
+          # Fetch logs from CloudWatch
+          aws logs get-log-events \
+            --log-group-name "/ecs/my-log-group" \
+            --log-stream-name "ecs/nginx-container/$TASK_ID" \
+            --query "events[*].message" \
+            --output text
