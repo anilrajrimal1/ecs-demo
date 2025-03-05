@@ -1,7 +1,10 @@
-name: ECS Task with Command Override
+name: Run ECS Task with Command Override
 
 on:
-  workflow_dispatch:
+    push:
+      branches:
+        - master
+    workflow_dispatch:
 
 jobs:
   run-ecs-task:
@@ -23,22 +26,23 @@ jobs:
       - name: Run ECS Task with Command Override
         id: run-task
         run: |
-          TASK_ARN=$(aws ecs run-task \
-            --cluster anil-demo-cluster \
-            --launch-type FARGATE \
-            --task-definition anil-demo-task \
-            --overrides '{
-              "containerOverrides": [
-                {
-                  "name": "nginx-container",
-                  "command": ["sh", "-c", "echo \'Overridden command running\'; sleep 3600"]
-                }
-              ]
-            }' \
-            --query "tasks[0].taskArn" \
-            --output text)
-
-          echo "TASK_ARN=$TASK_ARN" >> $GITHUB_ENV
+            TASK_ARN=$(aws ecs run-task \
+              --cluster anil-demo-cluster \
+              --launch-type FARGATE \
+              --task-definition anil-demo-task \
+              --overrides '{
+                "containerOverrides": [
+                  {
+                    "name": "nginx-container",
+                    "command": ["sh", "-c", "echo \"Overridden command running\"; sleep 3600"]
+                  }
+                ]
+              }' \
+              --query "tasks[0].taskArn" \
+              --output text)
+        
+            echo "TASK_ARN=$TASK_ARN" >> $GITHUB_ENV
+        
 
       - name: Wait for Task Completion
         run: |
