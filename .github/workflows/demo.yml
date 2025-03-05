@@ -53,15 +53,3 @@ jobs:
       - name: Wait for Task Completion
         run: |
           aws ecs wait tasks-stopped --cluster anil-cluster --tasks "$TASK_ARN"
-
-      - name: Fetch ECS Task Logs
-        run: |
-          # Get the Log Stream Name (based on task ID)
-          TASK_ID=$(echo $TASK_ARN | awk -F'/' '{print $NF}')
-          
-          # Fetch logs from CloudWatch
-          aws logs get-log-events \
-            --log-group-name "/ecs/my-log-group" \
-            --log-stream-name "ecs/nginx-container/$TASK_ID" \
-            --query "events[*].message" \
-            --output text
